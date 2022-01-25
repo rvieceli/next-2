@@ -7,54 +7,62 @@ import { api } from '../../services/api';
 import { FileInput } from '../Input/FileInput';
 import { TextInput } from '../Input/TextInput';
 
+interface FormData {
+  title: string;
+  description: string;
+  url: string;
+}
+
 interface FormAddImageProps {
   closeModal: () => void;
 }
 
+const ACCEPTED_FORMATS = ['image/jpeg', 'image/png', 'image/gif'];
+
 export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
   const [imageUrl, setImageUrl] = useState('');
   const [localImageUrl, setLocalImageUrl] = useState('');
-  const toast = useToast();
-
-  const formValidations = {
-    image: {
-      // TODO REQUIRED, LESS THAN 10 MB AND ACCEPTED FORMATS VALIDATIONS
-    },
-    title: {
-      // TODO REQUIRED, MIN AND MAX LENGTH VALIDATIONS
-    },
-    description: {
-      // TODO REQUIRED, MAX LENGTH VALIDATIONS
-    },
-  };
+  const toast = useToast({ position: 'top-right' });
 
   const queryClient = useQueryClient();
-  const mutation = useMutation(
-    // TODO MUTATION API POST REQUEST,
+  const mutation = useMutation<unknown, unknown, FormData>(
+    newImage => {
+      return api.post<FormData>('/api/images', newImage);
+    },
     {
-      // TODO ONSUCCESS MUTATION
+      onSuccess: () => {
+        queryClient.refetchQueries('images');
+      },
     }
   );
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState,
-    setError,
-    trigger,
-  } = useForm();
+  const { register, handleSubmit, reset, formState, setError, trigger } =
+    useForm({});
   const { errors } = formState;
 
-  const onSubmit = async (data: Record<string, unknown>): Promise<void> => {
+  const onSubmit = async (data: FormData): Promise<void> => {
     try {
-      // TODO SHOW ERROR TOAST IF IMAGE URL DOES NOT EXISTS
-      // TODO EXECUTE ASYNC MUTATION
-      // TODO SHOW SUCCESS TOAST
+      if (!imageUrl) {
+        toast({ description: 'Images url does exist', status: 'error' });
+        return;
+      }
+
+      await mutation.mutateAsync({
+        title: data.title,
+        description: data.description,
+        url: imageUrl,
+      });
+
+      toast({
+        description: 'Image saved',
+        title: 'Yeah',
+      });
+
+      closeModal();
     } catch {
-      // TODO SHOW ERROR TOAST IF SUBMIT FAILED
+      toast({ description: 'Something wrong', status: 'error' });
     } finally {
-      // TODO CLEAN FORM, STATES AND CLOSE MODAL
+      reset();
     }
   };
 
@@ -67,20 +75,29 @@ export function FormAddImage({ closeModal }: FormAddImageProps): JSX.Element {
           setLocalImageUrl={setLocalImageUrl}
           setError={setError}
           trigger={trigger}
-          // TODO SEND IMAGE ERRORS
-          // TODO REGISTER IMAGE INPUT WITH VALIDATIONS
+          error={errors.image}
+          {...register('image', {
+            required: true,
+            validate: {
+              lessThan10MB: ([value]) => value.size < 1024 * 1024 * 10,
+              acceptedFormats: ([value]) =>
+                ACCEPTED_FORMATS.includes(value.type),
+            },
+          })}
         />
 
         <TextInput
           placeholder="Título da imagem..."
-          // TODO SEND TITLE ERRORS
-          // TODO REGISTER TITLE INPUT WITH VALIDATIONS
+          name="title"
+          error={errors.title}
+          {...register('title', { required: true })}
         />
 
         <TextInput
           placeholder="Descrição da imagem..."
-          // TODO SEND DESCRIPTION ERRORS
-          // TODO REGISTER DESCRIPTION INPUT WITH VALIDATIONS
+          name="description"
+          error={errors.description}
+          {...register('description', { required: true })}
         />
       </Stack>
 

@@ -1,10 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import fauna from 'faunadb';
+import { client, query } from '../../services/fauna';
 
-const { query } = fauna;
-const client = new fauna.Client({ secret: process.env.FAUNA_API_KEY });
-
-interface ImagesQueryResponse {
+export interface ImagesQueryResponse {
   after?: {
     id: string;
   };
